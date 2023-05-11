@@ -268,8 +268,8 @@ int q_monotone(struct list_head *head, bool descend)
             strcmp(list_entry(walker, element_t, list)->value,
                    list_entry(walker->prev, element_t, list)->value);
         if (descend ? (ret_cmp > 0) : (ret_cmp < 0)) {
-            // list_del_init(walker->prev);
-            q_delete(walker->prev);
+            // "Remove" means not to free
+            list_del_init(walker->prev);
         } else {
             ++count;
             walker = walker->prev;
