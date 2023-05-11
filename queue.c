@@ -232,8 +232,8 @@ static void q_merge2(struct list_head *source,
     if (!target || !source || list_empty(source))
         return;
     struct list_head *target_walker = target->next;
-    while (target_walker != target) {
-        int ret_cmp = strcmp(list_entry(target, element_t, list)->value,
+    while (target_walker != target && !list_empty(source)) {
+        int ret_cmp = strcmp(list_entry(target_walker, element_t, list)->value,
                              list_entry(source->next, element_t, list)->value);
         if (descend ? (ret_cmp < 0) : (ret_cmp > 0)) {
             list_move_tail(source->next, target_walker);
@@ -249,11 +249,11 @@ void q_sort(struct list_head *head, bool descend)
 {
     if (!head || head->prev == head->next)
         return;
-    LIST_HEAD(head_temp);
-    list_cut_position(&head_temp, head, q_get_mid(head)->prev);
-    q_sort(&head_temp, descend);
+    LIST_HEAD(temp_head);
+    list_cut_position(&temp_head, head, q_get_mid(head));
+    q_sort(&temp_head, descend);
     q_sort(head, descend);
-    q_merge2(&head_temp, head, descend);
+    q_merge2(&temp_head, head, descend);
 }
 
 int q_monotone(struct list_head *head, bool descend)
