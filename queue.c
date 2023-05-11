@@ -25,9 +25,8 @@ void q_free(struct list_head *l)
     if (!l)
         return;
     for (struct list_head *node = l->next; node != l;) {
-        q_release_element(list_entry(node, element_t, list));
         node = node->next;
-        free(node->prev);
+        q_release_element(list_entry(node->prev, element_t, list));
     }
     free(l);
 }
@@ -129,7 +128,6 @@ static bool q_delete(struct list_head *node)
         return false;
     list_del(node);
     q_release_element(list_entry(node, element_t, list));
-    free(node);
     return true;
 }
 
