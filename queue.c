@@ -114,10 +114,11 @@ element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
 /* Return number of elements in queue */
 int q_size(struct list_head *head)
 {
+    struct list_head *node;
     if (!head)
-        return -1;
-    int result = -1;
-    for (struct list_head *node = head->next; node != head; node = node->next)
+        return 0;
+    int result = 0;
+    list_for_each (node, head)
         ++result;
     return result;
 }
