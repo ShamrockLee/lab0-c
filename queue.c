@@ -14,7 +14,7 @@
 /* Create an empty queue */
 struct list_head *q_new()
 {
-    struct list_head *const head = malloc(sizeof *head);
+    struct list_head *const head = malloc(sizeof(*head));
     INIT_LIST_HEAD(head);
     return head;
 }
@@ -34,7 +34,7 @@ void q_free(struct list_head *l)
 
 static element_t *q_new_element(char *s)
 {
-    element_t *const element_inserting = malloc(sizeof *element_inserting);
+    element_t *const element_inserting = malloc(sizeof(*element_inserting));
     if (!element_inserting)
         return NULL;
     const size_t string_size = strlen(s) + 1;
@@ -89,7 +89,7 @@ element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
             strncpy(sp, value, value_length_p1);
         }
     }
-    return node_removing;
+    return container_of(node_removing, element_t, list);
 }
 
 /* Remove an element from tail of queue */
@@ -109,7 +109,7 @@ element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
             strncpy(sp, value, value_length_p1);
         }
     }
-    return node_removing;
+    return container_of(node_removing, element_t, list);
 }
 
 /* Return number of elements in queue */
@@ -123,22 +123,34 @@ int q_size(struct list_head *head)
     return result;
 }
 
-/* Delete the middle node in queue */
-bool q_delete_mid(struct list_head *head)
+static bool q_delete(struct list_head *node)
+{
+    if (!node)
+        return false;
+    list_del(node);
+    q_release_element(container_of(node, element_t, list));
+    free(node);
+    return true;
+}
+
+static struct list_head *q_get_mid(struct list_head *head)
 {
     // https://leetcode.com/problems/delete-the-middle-node-of-a-linked-list/
     if (!head || head->next == head)
-        return false;
+        return NULL;
     struct list_head *node_runner, *node_walker;
     for (node_runner = node_walker = head->next;
          (node_runner = node_runner->next) != head &&
          (node_runner = node_runner->next) != head;
          node_walker = node_walker->next)
         ;
-    list_del(node_walker);
-    q_release_element(container_of(node_walker, element_t, list));
-    free(node_walker);
-    return true;
+    return node_walker;
+}
+
+/* Delete the middle node in queue */
+bool q_delete_mid(struct list_head *head)
+{
+    return q_delete(q_get_mid(head));
 }
 
 /* Delete all nodes that have duplicate string */
@@ -157,7 +169,7 @@ bool q_delete_dup(struct list_head *head)
         if (is_duplicate_prev || is_duplicate) {
             struct list_head *const node_deleting = node_distinct->next;
             node_distinct->next = node_distinct->next->next;
-            list_del(node_deleting);
+            q_delete(node_deleting);
         } else {
             node_distinct = node_distinct->next;
         }
@@ -211,7 +223,7 @@ void q_reverse(struct list_head *head)
 void q_reverseK(struct list_head *head, int k)
 {
     if (head->prev == head->next)
-        return head;
+        return;
     // https://leetcode.com/problems/reverse-nodes-in-k-group/
     const size_t length = q_size(head), length_quotient = length / k,
                  length_remaining = length - k * length_quotient;
@@ -241,15 +253,64 @@ void q_reverseK(struct list_head *head, int k)
     }
 }
 
-/* Sort elements of queue in ascending/descending order */
-void q_sort(struct list_head *head, bool descend) {}
+static void q_merge2(struct list_head *source,
+                     struct list_head *target,
+                     bool descend)
+{
+    if (!target || !source || list_empty(source))
+        return;
+    struct list_head *target_walker = target->next;
+    while (target_walker != target) {
+        int ret_cmp =
+            strcmp(container_of(target, element_t, list)->value,
+                   container_of(source->next, element_t, list)->value);
+        if (descend ? (ret_cmp < 0) : (ret_cmp > 0)) {
+            list_move_tail(source->next, target_walker);
+        } else {
+            target_walker = target_walker->next;
+        }
+    }
+    list_splice_tail_init(source, target);
+}
 
-/* Remove every node which has a node with a strictly less value anywhere to
+/* Sort elements of queue in ascending/descending order */
+void q_sort(struct list_head *head, bool descend)
+{
+    if (!head || head->prev == head->next)
+        return;
+    LIST_HEAD(head_temp);
+    list_cut_position(&head_temp, head, q_get_mid(head)->prev);
+    q_sort(&head_temp, descend);
+    q_sort(head, descend);
+    q_merge2(&head_temp, head, descend);
+}
+
+int q_monotone(struct list_head *head, bool descend)
+{
+    if (!head || list_empty(head)) {
+        return 0;
+    }
+    int count = 1;
+    // https://leetcode.com/problems/remove-nodes-from-linked-list/
+    for (struct list_head *walker = head->next; walker->next != head;
+         walker = walker->next) {
+        const int ret_cmp =
+            strcmp(container_of(walker, element_t, list)->value,
+                   container_of(walker->next, element_t, list)->value);
+        if (descend ? (ret_cmp < 0) : (ret_cmp > 0)) {
+            list_del_init(walker->next);
+        } else {
+            ++count;
+        }
+    }
+    return count;
+}
+
+/* Remove every node which has a node with a strictly lower value anywhere to
  * the right side of it */
 int q_ascend(struct list_head *head)
 {
-    // https://leetcode.com/problems/remove-nodes-from-linked-list/
-    return 0;
+    return q_monotone(head, false);
 }
 
 /* Remove every node which has a node with a strictly greater value anywhere to
@@ -257,7 +318,7 @@ int q_ascend(struct list_head *head)
 int q_descend(struct list_head *head)
 {
     // https://leetcode.com/problems/remove-nodes-from-linked-list/
-    return 0;
+    return q_monotone(head, true);
 }
 
 /* Merge all the queues into one sorted queue, which is in ascending/descending
@@ -265,5 +326,22 @@ int q_descend(struct list_head *head)
 int q_merge(struct list_head *head, bool descend)
 {
     // https://leetcode.com/problems/merge-k-sorted-lists/
-    return 0;
+    if (!head)
+        return -1;
+    if (list_empty(head))
+        return 0;
+    queue_contex_t *const target_context =
+        container_of(head->next, queue_contex_t, chain);
+    // Need to skip the first queue, so we cannot use list_for_each_entry.
+    for (struct list_head *current_node = head->next->next;
+         current_node != head; current_node = current_node->next) {
+        queue_contex_t *current_context =
+            container_of(current_node, queue_contex_t, chain);
+        q_merge2(current_context->q, target_context->q, descend);
+        // Set to null queue
+        current_context->q = NULL;
+        target_context->size += current_context->size;
+        current_context->size = 0;
+    }
+    return target_context->size;
 }
