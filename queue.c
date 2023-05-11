@@ -178,30 +178,10 @@ bool q_delete_dup(struct list_head *head)
 }
 
 /* Swap every two adjacent nodes */
-// Imagine a line of dancers, the hands of each touching the back of both of the
-// neighbors.
 void q_swap(struct list_head *head)
 {
     // https://leetcode.com/problems/swap-nodes-in-pairs/
-    if (!head || head->prev == head->next)
-        return;
-    struct list_head *node = head, *node_next_pair = node->next->next;
-    while (true) {
-        // Let the inner pair to exchange have two of their hands on each other
-        node->next->prev = node_next_pair->prev;
-        node_next_pair->prev->next = node->next;
-        // Let the inner pair turn around and connects to the outer two.
-        node->next->next = node_next_pair;
-        node_next_pair->prev->prev = node;
-        // Now the outer two should loosen their hands one at a time,
-        // and connect to another dancer in the inner two.
-        node->next = node_next_pair->prev;
-        node_next_pair->prev = node->next->next;
-        // Move to the next pair if any.
-        if (node_next_pair == head || node_next_pair->next == head)
-            break;
-        node = node_next_pair, node_next_pair = node_next_pair->next->next;
-    }
+    q_reverseK(head, 2);
 }
 
 /* Reverse elements in queue */
@@ -221,34 +201,23 @@ void q_reverse(struct list_head *head)
 /* Reverse the nodes of the list k at a time */
 void q_reverseK(struct list_head *head, int k)
 {
+    // https://leetcode.com/problems/reverse-nodes-in-k-group/
     if (head->prev == head->next)
         return;
-    // https://leetcode.com/problems/reverse-nodes-in-k-group/
-    const size_t length = q_size(head), length_quotient = length / k,
-                 length_remaining = length - k * length_quotient;
-    struct list_head *end_group_orig = head;
-    for (size_t i = 0; i < length_remaining; ++i)
-        end_group_orig = end_group_orig->prev;
-    for (size_t i = 0; i < length_quotient; ++i) {
-        // Reverse the internal links of the group and find rend_group_orig
-        struct list_head *next_orig = end_group_orig, *node = next_orig->prev;
-        for (size_t j = 0; j < k; ++j) {
-            struct list_head *const prev_orig = node->prev;
-            node->prev = next_orig;
-            node->next = prev_orig;
-            next_orig = node;
-            node = prev_orig;
+    LIST_HEAD(temp_head_reverser);
+    LIST_HEAD(temp_head_result);
+    while (true) {
+        struct list_head *node_last = head->next;
+        for (int rem = k - 1; rem && node_last != head; --rem)
+            node_last = node_last->next;
+        if (node_last != head) {
+            list_cut_position(&temp_head_reverser, head, node_last);
+            q_reverse(&temp_head_reverser);
+            list_splice_tail_init(&temp_head_reverser, &temp_head_result);
+        } else {
+            list_splice(&temp_head_result, head);
+            break;
         }
-        struct list_head *const rend_group_orig = node;
-
-        // Set the links between the group ends and the outer nodes
-        end_group_orig->prev->next = rend_group_orig;
-        rend_group_orig->next->prev = end_group_orig;
-        rend_group_orig->next = end_group_orig->prev;
-        end_group_orig->prev = next_orig;
-
-        // Move to the next group
-        end_group_orig = rend_group_orig->next;
     }
 }
 
