@@ -263,15 +263,16 @@ int q_monotone(struct list_head *head, bool descend)
     }
     int count = 1;
     // https://leetcode.com/problems/remove-nodes-from-linked-list/
-    for (struct list_head *walker = head->next; walker->next != head;) {
+    for (struct list_head *walker = head->prev; walker->prev != head;) {
         const int ret_cmp =
             strcmp(list_entry(walker, element_t, list)->value,
-                   list_entry(walker->next, element_t, list)->value);
-        if (descend ? (ret_cmp < 0) : (ret_cmp > 0)) {
-            list_del_init(walker->next);
+                   list_entry(walker->prev, element_t, list)->value);
+        if (descend ? (ret_cmp > 0) : (ret_cmp < 0)) {
+            // list_del_init(walker->prev);
+            q_delete(walker->prev);
         } else {
             ++count;
-            walker = walker->next;
+            walker = walker->prev;
         }
     }
     return count;
