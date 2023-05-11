@@ -212,7 +212,7 @@ void q_reverse(struct list_head *head)
         struct list_head *const next_orig = node->next;
         node->next = node->prev;
         node->prev = next_orig;
-        if (node == head)
+        if (next_orig == head)
             break;
         node = next_orig;
     }
