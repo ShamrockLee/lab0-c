@@ -25,7 +25,7 @@ void q_free(struct list_head *l)
     if (!l)
         return;
     for (struct list_head *node = l->next; node != l;) {
-        q_release_element(container_of(node, element_t, list));
+        q_release_element(list_entry(node, element_t, list));
         node = node->next;
         free(node->prev);
     }
@@ -80,7 +80,7 @@ element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
     struct list_head *node_removing = head->next;
     list_del_init(node_removing);
     if (sp) {
-        char *const value = container_of(node_removing, element_t, list)->value;
+        char *const value = list_entry(node_removing, element_t, list)->value;
         const size_t value_length_p1 = strlen(value) + 1;
         if (bufsize < value_length_p1) {
             strncpy(sp, value, bufsize - 1);
@@ -89,7 +89,7 @@ element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
             strncpy(sp, value, value_length_p1);
         }
     }
-    return container_of(node_removing, element_t, list);
+    return list_entry(node_removing, element_t, list);
 }
 
 /* Remove an element from tail of queue */
@@ -100,7 +100,7 @@ element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
     struct list_head *node_removing = head->prev;
     list_del_init(node_removing);
     if (sp) {
-        char *const value = container_of(node_removing, element_t, list)->value;
+        char *const value = list_entry(node_removing, element_t, list)->value;
         const size_t value_length_p1 = strlen(value) + 1;
         if (bufsize < value_length_p1) {
             strncpy(sp, value, bufsize - 1);
@@ -109,7 +109,7 @@ element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
             strncpy(sp, value, value_length_p1);
         }
     }
-    return container_of(node_removing, element_t, list);
+    return list_entry(node_removing, element_t, list);
 }
 
 /* Return number of elements in queue */
@@ -128,7 +128,7 @@ static bool q_delete(struct list_head *node)
     if (!node)
         return false;
     list_del(node);
-    q_release_element(container_of(node, element_t, list));
+    q_release_element(list_entry(node, element_t, list));
     free(node);
     return true;
 }
@@ -163,9 +163,9 @@ bool q_delete_dup(struct list_head *head)
     for (struct list_head *node_distinct = head; node_distinct->next != head;) {
         const bool is_duplicate =
             node_distinct->next->next != head &&
-            !strcmp(container_of(node_distinct->next, element_t, list)->value,
-                    container_of(node_distinct->next->next, element_t, list)
-                        ->value);
+            !strcmp(
+                list_entry(node_distinct->next, element_t, list)->value,
+                list_entry(node_distinct->next->next, element_t, list)->value);
         if (is_duplicate_prev || is_duplicate) {
             struct list_head *const node_deleting = node_distinct->next;
             node_distinct->next = node_distinct->next->next;
@@ -261,9 +261,8 @@ static void q_merge2(struct list_head *source,
         return;
     struct list_head *target_walker = target->next;
     while (target_walker != target) {
-        int ret_cmp =
-            strcmp(container_of(target, element_t, list)->value,
-                   container_of(source->next, element_t, list)->value);
+        int ret_cmp = strcmp(list_entry(target, element_t, list)->value,
+                             list_entry(source->next, element_t, list)->value);
         if (descend ? (ret_cmp < 0) : (ret_cmp > 0)) {
             list_move_tail(source->next, target_walker);
         } else {
@@ -295,8 +294,8 @@ int q_monotone(struct list_head *head, bool descend)
     for (struct list_head *walker = head->next; walker->next != head;
          walker = walker->next) {
         const int ret_cmp =
-            strcmp(container_of(walker, element_t, list)->value,
-                   container_of(walker->next, element_t, list)->value);
+            strcmp(list_entry(walker, element_t, list)->value,
+                   list_entry(walker->next, element_t, list)->value);
         if (descend ? (ret_cmp < 0) : (ret_cmp > 0)) {
             list_del_init(walker->next);
         } else {
@@ -331,12 +330,12 @@ int q_merge(struct list_head *head, bool descend)
     if (list_empty(head))
         return 0;
     queue_contex_t *const target_context =
-        container_of(head->next, queue_contex_t, chain);
+        list_entry(head->next, queue_contex_t, chain);
     // Need to skip the first queue, so we cannot use list_for_each_entry.
     for (struct list_head *current_node = head->next->next;
          current_node != head; current_node = current_node->next) {
         queue_contex_t *current_context =
-            container_of(current_node, queue_contex_t, chain);
+            list_entry(current_node, queue_contex_t, chain);
         q_merge2(current_context->q, target_context->q, descend);
         // Set to null queue
         current_context->q = NULL;
